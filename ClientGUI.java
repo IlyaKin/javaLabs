@@ -5,17 +5,17 @@ import ru.gb.jtwo.network.SocketThread;
 import ru.gb.jtwo.network.SocketThreadListener;
 
 import javax.swing.*;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.Socket;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
+import java.util.*;
 
 public class ClientGUI extends JFrame implements ActionListener, Thread.UncaughtExceptionHandler, SocketThreadListener {
 
@@ -27,8 +27,8 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     private final JTextField tfIPAddress = new JTextField("127.0.0.1");
     private final JTextField tfPort = new JTextField("8189");
     private final JCheckBox cbAlwaysOnTop = new JCheckBox("Always on top", true);
-    private final JTextField tfLogin = new JTextField("ivan");
-    private final JPasswordField tfPassword = new JPasswordField("123");
+    private static final JTextField tfLogin = new JTextField("Tim");
+    private final JPasswordField tfPassword = new JPasswordField("321");
     private final JButton btnLogin = new JButton("Login");
     private final JButton btnEdit = new JButton("Edit profile");
 
@@ -42,6 +42,7 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     private SocketThread socketThread;
     private final DateFormat DATE_FORMAT = new SimpleDateFormat("HH:mm:ss: ");
     private final String WINDOW_TITLE = "Chat";
+    private final Map<String, String> hashMap = new HashMap<String, String>();
 
 
     public static void main(String[] args) {
@@ -60,9 +61,6 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         setSize(WIDTH, HEIGHT);
         setAlwaysOnTop(true);
         setTitle(WINDOW_TITLE);
-//        userList.setListData(new String[]{"user1", "user2", "user3", "user4",
-//                "user5", "user6", "user7", "user8", "user9",
-//                "user-with-exceptionally-long-name-in-this-chat"});
         JScrollPane scrUser = new JScrollPane(userList);
         JScrollPane scrLog = new JScrollPane(log);
         scrUser.setPreferredSize(new Dimension(100, 0));
@@ -74,6 +72,10 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         btnSend.addActionListener(this);
         btnLogin.addActionListener(this);
         btnDisconnect.addActionListener(this);
+        // add Slovar
+        hashMap.put("Дурак","Ду##рак");
+        hashMap.put("россия","Россия");
+        hashMap.put("дурак", "д##ак");
 
         panelTop.add(tfIPAddress);
         panelTop.add(tfPort);
@@ -120,9 +122,28 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         try {
             Socket socket = new Socket(tfIPAddress.getText(), Integer.parseInt(tfPort.getText()));
             socketThread = new SocketThread(this, "Client", socket);
+            getLastMsgs ();
         } catch (IOException e) {
             showException(Thread.currentThread(), e);
         }
+    }
+
+    private void getLastMsgs () {
+        ArrayList<String> list = new ArrayList<>();
+        try {
+            FileReader fr = new FileReader("log.txt");
+            Scanner sc = new Scanner(fr);
+            while (sc.hasNextLine()){
+                list.add(sc.nextLine());
+            }
+            sc.close();
+            for (int i = list.size()-5; i < list.size(); i++) {
+                log.append(list.get(i)+ "\n");
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+
     }
 
     private void sendMessage() {
@@ -131,15 +152,19 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         if ("".equals(msg)) return;
         tfMessage.setText(null);
         tfMessage.requestFocusInWindow();
+        if (hashMap.containsKey(msg)){
+            msg = hashMap.get(msg);
+        }
+        System.out.println(msg);
         socketThread.sendMessage(Library.getTypeBcastClient(msg));
-        //putLog(String.format("%s: %s", username, msg));
-        //wrtMsgToLogFile(msg, username);
+        putLog(String.format("%s: %s", username, msg));
+        wrtMsgToLogFile(msg, username);
     }
 
     private void wrtMsgToLogFile(String msg, String username) {
         try (FileWriter out = new FileWriter("log.txt", true)) {
             out.write(username + ": " + msg + System.lineSeparator());
-            out.flush();
+            //out.flush();
         } catch (IOException e) {
             if (!shownIoErrors) {
                 shownIoErrors = true;
@@ -158,6 +183,7 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
             }
         });
     }
+
 
     private void showException(Thread t, Throwable e) {
         String msg;
@@ -245,5 +271,9 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
             default:
                 throw new RuntimeException("Unknown message type: " + value);
         }
+    }
+
+    public static String getTfLogin() {
+        return tfLogin.getText();
     }
 }
