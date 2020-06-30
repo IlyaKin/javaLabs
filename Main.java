@@ -1,25 +1,40 @@
-package ru.geekbrains.java3.homeW1;
+package ru.gb.jtwo.chat.client;
 
-import java.util.*;
+public class Main extends Thread {
 
-public class Main {
-    //меняем местами 2 элемента массива (1ый и последний)
-    static void changePos (String[] s){
-        String s1 = s[0];
-        s[0] = s[s.length-1];
-        s[s.length-1] = s1;
-        System.out.println(Arrays.toString(s));
+    static volatile char letter = 'A';
+    static Object obj = new Object();
+
+    static class WaitNotifyClass implements Runnable {
+        private char currentLetter;
+        private char nextLetter;
+
+        public WaitNotifyClass(char currentLetter, char nextLetter) {
+            this.currentLetter = currentLetter;
+            this.nextLetter = nextLetter;
+        }
+
+        @Override
+        public void run() {
+            for (int i = 0; i < 5; i++) {
+                synchronized (obj) {
+                    try {
+                        while (letter != currentLetter)
+                            obj.wait();
+                        System.out.print(currentLetter);
+                        letter = nextLetter;
+                        obj.notifyAll();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
     }
-
-    static void arraysToArrList (String[] arrList){
-        List<String> list = new ArrayList<String>();
-        Collections.addAll(list, arrList);
-        System.out.println(list);
-    }
-
     public static void main(String[] args) {
-	String[] arr = {"Hello", "Java3", "Welcome", "to", "the", "lesson"};
-	changePos(arr);
-	arraysToArrList(arr);
+        new Thread(new WaitNotifyClass('A', 'B')).start();
+        new Thread(new WaitNotifyClass('B', 'C')).start();
+        new Thread(new WaitNotifyClass('C', 'A')).start();
     }
 }
+
